@@ -1,0 +1,19 @@
+node ("worker") {
+    stage ('checkout') {
+        checkout([$class: 'GitSCM', 
+                    branches: [[name: '*/master']], 
+                    doGenerateSubmoduleConfigurations: false, 
+                    extensions: [], 
+                    submoduleCfg: [], 
+                    userRemoteConfigs: [[credentialsId: '', 
+                    url: 'https://github.com/dhrumilpatel/helloworld.git']]])      
+                        }
+    stage ('Docker Build') {
+         // Build and push image with Jenkins' docker-plugin
+            withDockerRegistry([credentialsId: "dockerhub", url: "https://index.docker.io/v1/"])
+            {
+            image = docker.build("blueberrie/goal-hello-world:latest")
+            image.push()    
+            }
+        }
+        }
