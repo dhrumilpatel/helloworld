@@ -1,0 +1,23 @@
+32019-4-1 13:33:45 [123] User0 goes to search page
+42019-4-1 13:33:46 [123] User0 types in search text
+45fty-4-1 13:33:54 [123] ERROR: fetal Some exception occured-------
+72019-4-1 13:33:50 [123] User9 clicks search button
+82019-4-1 13:33:53 [256] User10 does something
+92019-4-1 13:33:54 [123] ERROR: Some exception occured-------
+102019-4-1 13:33:56 [256] User1 logs off
+112019-4-1 13:33:57 [190] ERROR: Invalid input-------
+22019-4-1 13:33:45 [123] User2 logs in
+32019-4-1 13:33:45 [123] User3 goes to search page
+45fty-4-1 13:33:54 [123] ERROR: Some exception occured-------
+11234-4-1 13:33:49 [190] User3 runs some job
+23456-4-1 13:33:50 [123] User4 clicks search button
+45fty-4-1 13:33:54 [123] ERROR: Some exception occured-------
+23421-4-1 13:33:57 [190] ERROR: Invalid input-------
+3derfr-4-1 20:33:53 [256] User2 does something
+dededed-4-1 20:33:54 [123] ERROR: Some exception occured-------
+11234-4-1 13:33:49 [90] User3 runs some job
+23456-4-1 13:33:50 [23] User4 clicks search button
+45fty-4-1 13:33:54 [13] ERROR: Some exception occured-------
+23421-4-1 13:33:57 [19] ERROR: Invalid input-------
+3derfr-4-1 13:33:53 [25] User2 does something
+dededed-4-1 13:33:54 [222] ERROR: Some exception occured-------
