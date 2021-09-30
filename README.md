@@ -8,15 +8,15 @@ To launch Hello-World Javabased Containeraized MicroServices in AWS Cloud.
 
 1. AWS Account
 2. EC2
-   | Instance Type | Master |  Slave |
-   | ------------- | -------|-----  |
-   |            |       AWS CLI         |
-   |            |       EKSCTL          |
-   |      EC2   |        KUBECTL         |
-   |            |       GIT             |
-   |            |       DOCKER          |
-   |            |       MAVEN           |
-   |            |       JENKINS           |
+   | Instance Type | Master &  Slave |
+   | ------------- | --------------  |
+   |               |       AWS CLI   |
+   |               |       EKSCTL    |
+   |      EC2      |       KUBECTL   |
+   |               |       GIT       |
+   |               |       DOCKER    |
+   |               |       MAVEN     |
+   |               |       JENKINS   |
 
 3. EKS
    Provisioned and AWS EKS Cluster
@@ -304,6 +304,9 @@ helloworld                      # root directory
 | - hello-world-k8s-deployment  # Pipeline script
 | - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
 | - images                      # contains all images
+| - find_errors.sh              # Log Monitor and Error filter script
+| - useractivity_logfile.log    # sample log file
+| - useractivity_logfile.log_status_2021-09-30.log      # filter's and mark's --- on ERROR and -3 lines
 ```
 
 ## Testing Locally
