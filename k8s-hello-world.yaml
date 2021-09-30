@@ -1,0 +1,104 @@
+---
+# deployment - created Pods with node affinity schedule only on worker nodes
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world-deploy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node
+                operator: In
+                values:
+                - worker
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+      containers:
+      - name: hello-world
+        image: blueberrie/goal-hello-world:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: 500m
+          requests:
+            cpu: 200m
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 20
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 20
+
+
+---
+
+# Services
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world-service
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 30600
+  type: LoadBalancer
+  selector:
+    app: hello-world
+
+---
+
+# HorizontalPod Autoscaler
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hello-world-deploy
+  namespace: default
+spec:
+  maxReplicas: 5
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hello-world-deploy
+  targetCPUUtilizationPercentage: 50
+
+---
+
+# Pod Discruption Budget
+
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: hello-world-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      node: worker
+
