@@ -276,7 +276,7 @@ sudo yum install git -y
 
 ## Deployment of Hello-World Microservices App in AWS EKS Cluster using Jenkins Pipeline
 
-!(images/springboot-app-deployment.png)
+![](/images/springboot-app-deployment.png)
 
 Aim is to faciliate automated way of Continious Deployment and Integration of Hello-World  java application packaging, creating Docker image and deploying containered microservies into AWS EKS - Kubernetes Cluster using Jenkins pipelines.
 
@@ -416,7 +416,7 @@ Jenkins Jobs
         }
     ```
 
-    !(/images/Job-docker-image.png)
+    ![](/images/Job-docker-image.png)
 
 - hello-world-k8s-deployment: This job will git pull commit docker image and deploy to AWS EKS Cluster
   - Pipeline Script
@@ -441,7 +441,7 @@ Jenkins Jobs
         }
     }
   ````
-        !(/images/Job-k8s-deploy.png)
+  ![](/images/Job-k8s-deploy.png)
 
 ## Log Monitor Script
 
