@@ -282,6 +282,111 @@ Aim is to faciliate automated way of Continious Deployment and Integration of He
 
 Hello-World is an Springboot Microservices based Java application. I have already created a repo with source code, including Dockerfile, Jenkinsfile and other supported project files. 
 
+
+## Source Code
+
+Git Clone
+```bash
+git clone https://github.com/dhrumilpatel/gs-spring-boot.git
+```
+Folder Structure
+
+```text
+helloworld                      # root directory
+| - test                        # application build test
+| - src                         # application build src
+| - pom.xml                     # appliccation pom file
+| - target                      # application target file generates hello-world-spring-boot-0.0.1-SNAPSHOT.jar file
+| - README.md # Read Me file
+| - k8s-hello-world.yaml        # k8s deployment file
+| - Dockerfile                  # Docker build image contents
+| - hello-world-imaging.txt     # Pipeline script
+| - hello-world-k8s-deployment  # Pipeline script
+| - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
+| - images                      # contains all images
+```
+
+## Testing Locally
+
+### Packaging
+```bash
+mvn clean
+mvn compile
+mvn package
+```
+```bash
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.053 s - in com.example.springboot.HelloControllerTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- maven-jar-plugin:3.2.0:jar (default-jar) @ hello-world-spring-boot ---
+[INFO] Building jar: /home/ec2-user/helloworld/target/hello-world-spring-boot-0.0.1-SNAPSHOT.jar
+[INFO]
+[INFO] --- spring-boot-maven-plugin:2.5.0:repackage (repackage) @ hello-world-spring-boot ---
+[INFO] Replacing main artifact with repackaged archive
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 10.067 s
+[INFO] Finished at: 2021-09-30T14:56:23Z
+[INFO] Final Memory: 27M/104M
+[INFO] ------------------------------------------------------------------------
+```
+
+### Imaging
+```bash
+[ec2-user@ip-172-31-4-42 helloworld]$ docker build -t helloworld:v1 .
+Sending build context to Docker daemon  37.08MB
+Step 1/3 : FROM openjdk:8-jre-alpine
+ ---> f7a292bbb70c
+Step 2/3 : COPY ./target/hello-world-spring-boot-0.0.1-SNAPSHOT.jar /my-app-hello-world.jar
+ ---> 479be7c65aa3
+Step 3/3 : CMD java -jar /my-app-hello-world.jar
+ ---> Running in c988dc4d81ca
+Removing intermediate container c988dc4d81ca
+ ---> c9251da573a6
+Successfully built c9251da573a6
+Successfully tagged helloworld:v1
+
+[ec2-user@ip-172-31-4-42 helloworld]$ docker image ls
+REPOSITORY                        TAG            IMAGE ID       CREATED         SIZE
+helloworld                        v1             c9251da573a6   7 seconds ago   104MB
+
+```
+
+### Deployment
+```bash
+[ec2-user@ip-172-31-4-42 helloworld]$ kubectl create -f k8s-hello-world.yaml
+deployment.apps/hello-world-deploy created
+service/hello-world-service created
+horizontalpodautoscaler.autoscaling/hello-world-deploy created
+poddisruptionbudget.policy/hello-world-pdb created
+
+
+[ec2-user@ip-172-31-4-42 helloworld]$ kubectl get all
+NAME                                      READY   STATUS    RESTARTS   AGE
+pod/hello-world-deploy-7d666575bc-f2q82   1/1     Running   0          85s
+pod/hello-world-deploy-7d666575bc-nk8t8   1/1     Running   0          85s
+
+NAME                          TYPE           CLUSTER-IP     EXTERNAL-IP                                                                PORT(S)          AGE
+service/hello-world-service   LoadBalancer   10.100.31.14   a7af352b518a24a1393921e3b4506153-1094458878.eu-north-1.elb.amazonaws.com   8080:30600/TCP   85s
+service/kubernetes            ClusterIP      10.100.0.1     <none>                                                                     443/TCP          2d18h
+
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/hello-world-deploy   2/2     2            2           86s
+
+NAME                                            DESIRED   CURRENT   READY   AGE
+replicaset.apps/hello-world-deploy-7d666575bc   2         2         2       86s
+
+NAME                                                     REFERENCE                       TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/hello-world-deploy   Deployment/hello-world-deploy   <unknown>/50%   2         5         2          85s
+```
+
+### CI/CD Pipelines
+
 Jenkins Jobs
 - hello-world-packaging: This Job will git pull last commit and perform packaging using maven of hello-world microservices.
 - hello-world-imaging: This job will git pull last commit package and perform docker image creation.
@@ -307,6 +412,9 @@ Jenkins Jobs
         }
         }
     ```
+
+    !(/images/Job-docker-image.png)
+
 - hello-world-k8s-deployment: This job will git pull commit docker image and deploy to AWS EKS Cluster
   - Pipeline Script
   ```java
@@ -330,26 +438,48 @@ Jenkins Jobs
         }
     }
   ````
-  
-## Source Code
+        !(/images/Job-k8s-deploy.png)
 
-Git Clone
+## Log Monitor Script
+
 ```bash
-git clone https://github.com/dhrumilpatel/gs-spring-boot.git
+sh find_errors.sh --help
+#############################
+USAGE :  sh find_errors.sh
+This script does not accept any arguments, log directory are hardcoded, change it before running the script
+#############################
+############# Description ################
+This script looks into useractivity_logfile.log and monitors ERROR enteries; save them in an output file for further analysis.
+#############################
+Extra Scope  --> 1. For a dynamically growing/lotating logfile, add this script to crontab jobs for every minute, and uncomment the tail command provided in the script.
+                 2. Create a suitable crontab Job
+##########################################
 ```
-Folder Structure
+```bash
+[ec2-user@ip-172-31-4-42 helloworld]$ cat useractivity_logfile.log_status_2021-09-30.log
+32019-4-1 13:33:45 [123] User0 goes to search page
+42019-4-1 13:33:46 [123] User0 types in search text
+45fty-4-1 13:33:54 [123] ERROR: fetal Some exception occured-------
+72019-4-1 13:33:50 [123] User9 clicks search button
+82019-4-1 13:33:53 [256] User10 does something
+92019-4-1 13:33:54 [123] ERROR: Some exception occured-------
+102019-4-1 13:33:56 [256] User1 logs off
+112019-4-1 13:33:57 [190] ERROR: Invalid input-------
+22019-4-1 13:33:45 [123] User2 logs in
+32019-4-1 13:33:45 [123] User3 goes to search page
+45fty-4-1 13:33:54 [123] ERROR: Some exception occured-------
+11234-4-1 13:33:49 [190] User3 runs some job
+23456-4-1 13:33:50 [123] User4 clicks search button
+45fty-4-1 13:33:54 [123] ERROR: Some exception occured-------
+23421-4-1 13:33:57 [190] ERROR: Invalid input-------
+3derfr-4-1 20:33:53 [256] User2 does something
+dededed-4-1 20:33:54 [123] ERROR: Some exception occured-------
+11234-4-1 13:33:49 [90] User3 runs some job
+23456-4-1 13:33:50 [23] User4 clicks search button
+45fty-4-1 13:33:54 [13] ERROR: Some exception occured-------
+23421-4-1 13:33:57 [19] ERROR: Invalid input-------
+3derfr-4-1 13:33:53 [25] User2 does something
+dededed-4-1 13:33:54 [222] ERROR: Some exception occured-------
 
-```text
-helloworld                      # root directory
-| - test                        # application build test
-| - src                         # application build src
-| - pom.xml                     # appliccation pom file
-| - target                      # application target file generates hello-world-spring-boot-0.0.1-SNAPSHOT.jar file
-| - README.md # Read Me file
-| - k8s-hello-world.yaml        # k8s deployment file
-| - Dockerfile                  # Docker build image contents
-| - hello-world-imaging.txt     # Pipeline script
-| - hello-world-k8s-deployment  # Pipeline script
-| - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
-| - images                      # contains all images
 ```
+
