@@ -1,0 +1,19 @@
+node ("worker") {
+    stage ('checkout') {
+        checkout([$class: 'GitSCM', 
+                    branches: [[name: '*/master']], 
+                    doGenerateSubmoduleConfigurations: false, 
+                    extensions: [], 
+                    submoduleCfg: [], 
+                    userRemoteConfigs: [[credentialsId: '', 
+                    url: 'https://github.com/dhrumilpatel/helloworld.git']]])      
+        }
+    stage ('K8S Deploy') {
+       
+                kubernetesDeploy(
+                    configs: 'k8s-hello-world.yaml',
+                    kubeconfigId: 'K8S',
+                    enableConfigSubstitution: true
+                    )               
+        }
+    }

@@ -283,7 +283,73 @@ Aim is to faciliate automated way of Continious Deployment and Integration of He
 Hello-World is an Springboot Microservices based Java application. I have already created a repo with source code, including Dockerfile, Jenkinsfile and other supported project files. 
 
 Jenkins Jobs
-- hello-world-packaging : This Job will git pull last commit and perform packaging using maven of hello-world microservices.
-- hello-world-imaging: This job will git pull  
+- hello-world-packaging: This Job will git pull last commit and perform packaging using maven of hello-world microservices.
+- hello-world-imaging: This job will git pull last commit package and perform docker image creation.
+  - Pipeline Script
+    ```java
+    node ("worker") {
+    stage ('checkout') {
+        checkout([$class: 'GitSCM', 
+                    branches: [[name: '*/master']], 
+                    doGenerateSubmoduleConfigurations: false, 
+                    extensions: [], 
+                    submoduleCfg: [], 
+                    userRemoteConfigs: [[credentialsId: '', 
+                    url: 'https://github.com/dhrumilpatel/helloworld.git']]])      
+                        }
+    stage ('Docker Build') {
+         // Build and push image with Jenkins' docker-plugin
+            withDockerRegistry([credentialsId: "dockerhub", url: "https://index.docker.io/v1/"])
+            {
+            image = docker.build("blueberrie/goal-hello-world:latest")
+            image.push()    
+            }
+        }
+        }
+    ```
+- hello-world-k8s-deployment: This job will git pull commit docker image and deploy to AWS EKS Cluster
+  - Pipeline Script
+  ```java
+     node ("worker") {
+    stage ('checkout') {
+        checkout([$class: 'GitSCM', 
+                    branches: [[name: '*/master']], 
+                    doGenerateSubmoduleConfigurations: false, 
+                    extensions: [], 
+                    submoduleCfg: [], 
+                    userRemoteConfigs: [[credentialsId: '', 
+                    url: 'https://github.com/dhrumilpatel/helloworld.git']]])      
+        }
+    stage ('K8S Deploy') {
+       
+                kubernetesDeploy(
+                    configs: 'k8s-hello-world.yaml',
+                    kubeconfigId: 'K8S',
+                    enableConfigSubstitution: true
+                    )               
+        }
+    }
+  ````
   
+## Source Code
 
+Git Clone
+```bash
+git clone https://github.com/dhrumilpatel/gs-spring-boot.git
+```
+Folder Structure
+
+```text
+helloworld                      # root directory
+| - test                        # application build test
+| - src                         # application build src
+| - pom.xml                     # appliccation pom file
+| - target                      # application target file generates hello-world-spring-boot-0.0.1-SNAPSHOT.jar file
+| - README.md # Read Me file
+| - k8s-hello-world.yaml        # k8s deployment file
+| - Dockerfile                  # Docker build image contents
+| - hello-world-imaging.txt     # Pipeline script
+| - hello-world-k8s-deployment  # Pipeline script
+| - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
+| - images                      # contains all images
+```
