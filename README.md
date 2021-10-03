@@ -1,8 +1,11 @@
 # Goal
 
-To launch Hello-World Javabased Containeraized MicroServices in AWS Cloud.
+The Goal of this Project is to launch an `Hello-World` Javabased Containeraized MicroServices in AWS EKS.
+
+This project is `production-ready`. Which means, following below steps in order given, you should be able to successfully launch this micro-services.
 
 # Architecture
+
 
 # Pre-requistes
 
@@ -36,13 +39,13 @@ From your AMS Console navigate to Services - EC2. Launch Instance with AMI : Ama
 
 AWS CLI - Command line tools for working with AWS services
 
-Reference : Install [AWS CLI Version-2 ](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html)
+Installation reference : [AWS CLI Version-2 ](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html)
 
-EKSCTL - 
+EKSCTL - The official CLI for Amazon EKS
 
-Reference : Install [Weaveworks EKSCTL](https://github.com/weaveworks/eksctl)
+Installation reference : [Weaveworks EKSCTL](https://github.com/weaveworks/eksctl)
 
-### Configure IAM with Group and Users
+### Configure IAM with Group, Policy and Users
 
 Configuring IAM
 From your AMS Console navigate to Services - IAM
@@ -88,17 +91,56 @@ From your AMS Console navigate to Services - IAM
        1. Reference : https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
    
 ### Install Kubectl
-Install Kubectl
+Install Kubectl - Kubernetes uses a command line utility called `kubectl` for communicating with the cluster `API server`
 
-Reference :Install [kubectl](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html)
+Installation reference : [kubectl](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html)
 
-### Create Kuberbetes EKS Cluster
+## Source Code
+
+Git Clone
+```bash
+git clone https://github.com/dhrumilpatel/helloworld.git
+```
+Folder Structure
+
+```text
+helloworld                      # root directory
+| - test                        # application build test
+| - src                         # application build src
+| - pom.xml                     # appliccation pom file
+| - target                      # application target file generates hello-world-spring-boot-0.0.1-SNAPSHOT.jar file
+| - README.md # Read Me file
+| - k8s-hello-world.yaml        # k8s deployment file
+| - Dockerfile                  # Docker build image contents
+| - hello-world-imaging.txt     # Pipeline script
+| - hello-world-k8s-deployment  # Pipeline script
+| - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
+| - images                      # contains all images
+| - find_errors.sh              # Log Monitor and Error filter script
+| - useractivity_logfile.log    # sample log file
+| - useractivity_logfile.log_status_2021-09-30.log      # filter's and mark's --- on ERROR and -3 lines
+| - aws-terraform-eks-cluster
+    | - main.tf                 # eks cluster configs
+    | - variables.tf            # linked pre-defined variables
+    | - output.tf               # terraform output's upon eks creation
+    | - terraform.tfstate       # state file eks cluster
+```
+
+### Create Kubernetes EKS Cluster
+
+## EKS Creation Manually via CLI
+
 EKS Cluster can be created via EKS Console. In our case, we will create via cli.
 
 EKS Cluster Config:
-1. Node: 3 Node cluster ( Master:1 (AWS auto managed) Worker: 2)
+1. Nodes: 3 Nodes cluster ( Master:1 (AWS auto managed) Worker: 2)
 2. Region: eu-north-1
-3. Instance Type: m5.large
+3. Instance Type: m5.large 
+   ```bash
+   # Execute this command to find desired and available Instance types
+   aws ec2 describe-instance-type-offerings --location-type "availability-zone" --filters Name=location,Values=eu-north-1b --region eu-north-1
+
+   ```
 4. Zone: AWS auto managed
    ``` bash
     [ec2-user@ip-172-31-3-80 ~]$ aws ec2 describe-availability-zones --region eu-north-1
@@ -207,7 +249,340 @@ EKS Cluster Config:
 2021-09-27 19:49:03 [ℹ]  node "ip-192-168-69-72.eu-north-1.compute.internal" is ready
 ```
 
-Cluster creation will take rought 20-25 miins, once its been created and ready as shown above, Verify the EKS Cluster via AWS Console or `kubectl get all`
+Cluster creation will take rought 20-25 mins, once its been created and ready as shown above, Verify the EKS Cluster via AWS Console or `kubectl get all`
+
+## EKS Creation Automatically via Terraform
+
+In order to created EKS high-available cluster consider below `main.tf`
+
+Scope of `main.tf` includes
+- Nodes: 3 Node cluster ( Master:1 (AWS auto managed) Worker: 2)
+- Region: eu-north-1
+- Instance Type: m5.large
+- Zone: AWS auto managed
+- Accessibility : Strickly Private ( No Public IPv4 DNS available )
+- Mapping Existing IAM - User and Account directly - Inheritance of Policy ( created above in manual EC2 instance provisioning )
+- Create sample Pod & LoadBalancer in default namespace.
+
+
+```bash
+terraform {
+  required_version = ">= 0.12.0"
+}
+
+provider "aws" {
+  version = ">= 2.28.1"
+  region  = var.region
+}
+
+data "aws_eks_cluster" "cluster" {
+  name = module.eks.cluster_id
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_id
+}
+
+data "aws_availability_zones" "available" {
+}
+
+resource "aws_security_group" "worker_group_mgmt_one" {
+  name_prefix = "worker_group_mgmt_one"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port = 22
+    to_port   = 22
+    protocol  = "tcp"
+
+    cidr_blocks = [
+      "10.0.0.0/8",
+    ]
+  }
+}
+
+resource "aws_security_group" "all_worker_mgmt" {
+  name_prefix = "all_worker_management"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port = 22
+    to_port   = 22
+    protocol  = "tcp"
+
+    cidr_blocks = [
+      "10.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+    ]
+  }
+}
+
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "3.7.0"
+
+  name                 = "test-vpc"
+  cidr                 = "10.0.0.0/16"
+  azs                  = data.aws_availability_zones.available.names
+  private_subnets      = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets       = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
+  enable_nat_gateway   = true
+  single_nat_gateway   = true
+  enable_dns_hostnames = true
+
+  public_subnet_tags = {
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                      = "1"
+  }
+
+  private_subnet_tags = {
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"             = "1"
+  }
+}
+
+module "eks" {
+  source       = "terraform-aws-modules/eks/aws"
+  cluster_name    = var.cluster_name
+  cluster_version = "1.20"
+  subnets         = module.vpc.private_subnets
+  cluster_create_timeout = "1h"
+  cluster_endpoint_private_access = true
+  version =      "17.20.0"
+
+  vpc_id = module.vpc.vpc_id
+
+  worker_groups = [
+    {
+      name                          = "worker-group-1"
+      instance_type                 = "m5.large"
+      additional_userdata           = "echo helloworld"
+      asg_desired_capacity          = 2
+      asg_min_size                  = 2
+      asg_maz_size                  = 2
+      root_volume_type              = "gp2"
+      root_volume_size              = 100
+      additional_security_group_ids = [aws_security_group.worker_group_mgmt_one.id]
+    },
+  ]
+
+  worker_additional_security_group_ids = [aws_security_group.all_worker_mgmt.id]
+  map_users                            = var.map_users
+  map_accounts                         = var.map_accounts
+}
+
+
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+  load_config_file       = false
+  version                = "~> 1.11"
+}
+
+resource "kubernetes_deployment" "example" {
+  metadata {
+    name = "terraform-example"
+    labels = {
+      test = "MyExampleApp"
+    }
+  }
+
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        test = "MyExampleApp"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          test = "MyExampleApp"
+        }
+      }
+
+      spec {
+        container {
+          image = "nginx:1.7.8"
+          name  = "example"
+
+          resources {
+            limits {
+              cpu    = "0.5"
+              memory = "512Mi"
+            }
+            requests {
+              cpu    = "250m"
+              memory = "50Mi"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "example" {
+  metadata {
+    name = "terraform-example"
+  }
+  spec {
+    selector = {
+      test = "MyExampleApp"
+    }
+    port {
+      port        = 80
+      target_port = 80
+    }
+
+    type = "LoadBalancer"
+  }
+}
+```
+Update `variables.tf`
+```bash
+variable "region" {
+  default     = "eu-north-1"
+  description = "AWS Stocholm region"
+}
+
+variable "cluster_name" {
+  default = "eks-hello-world"
+}
+
+variable "map_accounts" {
+  description = "Additional AWS account numbers to add to the aws-auth configmap."
+  type        = list(string)
+
+  default = [
+    "XXXXXXXX"
+  ]
+}
+
+variable "map_users" {
+  description = "Additional IAM users to add to the aws-auth configmap."
+  type = list(object({
+    userarn  = string
+    username = string
+    groups   = list(string)
+  }))
+
+  default = [
+    {
+      userarn  = "arn:aws:iam::XXXXXX:user/YYYYYY"
+      username = "YYYYYY"
+      groups   = ["system:masters"]
+    }
+  ]
+}
+
+```
+
+Once satified with the `.tf` files proceed ahead with provisioning.
+
+```bash
+terraform init
+terraform plan
+terraform apply # Only 'yes' will be accepted to approve. Enter a value: yes
+```
+
+Cluster creation will take rought 20-25 mins, once its been created and ready as shown above, Verify the EKS Cluster via AWS Console or `kubectl` 
+
+Perform update and verify the EKS cluster
+
+```bash
+aws eks update-kubeconfig --name eks-hello-world --region eu-north-1
+
+Updated context arn:aws:eks:eu-north-1:852883190279:cluster/eks-hello-world in /home/ec2-user/.kube/config
+
+## Fetch the sample Pod & Loadbalancer required to create via EKS cluster creation
+
+[ec2-user@ip-172-31-3-80 aws-terraform-eks-cluster]$  kubectl get pod,svc
+NAME                                    READY   STATUS    RESTARTS   AGE
+pod/terraform-example-8484bc9b8-lhccv   1/1     Running   0          13m
+pod/terraform-example-8484bc9b8-vb76z   1/1     Running   0          13m
+
+NAME                        TYPE           CLUSTER-IP     EXTERNAL-IP                                                                PORT(S)        AGE
+service/kubernetes          ClusterIP      172.20.0.1     <none>                                                                     443/TCP        18m
+service/terraform-example   LoadBalancer   172.20.58.29   abec2d5d7480a42e59cefaac5a699733-1749363570.eu-north-1.elb.amazonaws.com   80:30389/TCP   13m
+[ec2-user@ip-172-31-3-80 aws-terraform-eks-cluster]$
+
+```
+
+One last step, before we deploy and run our containerized hello world microservices. Label the node as `node=worker` to achieve node affinity.
+
+```bash
+[ec2-user@ip-172-31-3-80 helloworld]$ kubectl get node
+NAME                                        STATUS   ROLES    AGE   VERSION
+ip-10-0-1-142.eu-north-1.compute.internal   Ready    <none>   28m   v1.20.7-eks-135321
+ip-10-0-2-246.eu-north-1.compute.internal   Ready    <none>   28m   v1.20.7-eks-135321
+
+
+[ec2-user@ip-172-31-3-80 helloworld]$ kubectl label node ip-10-0-1-142.eu-north-1.compute.internal node=worker
+node/ip-10-0-1-142.eu-north-1.compute.internal labeled
+
+[ec2-user@ip-172-31-3-80 helloworld]$ kubectl label node ip-10-0-2-246.eu-north-1.compute.internal node=worker
+node/ip-10-0-2-246.eu-north-1.compute.internal labeled
+[ec2-user@ip-172-31-3-80 helloworld]$
+
+[ec2-user@ip-172-31-3-80 helloworld]$ kubectl get node -l node=worker
+NAME                                        STATUS   ROLES    AGE   VERSION
+ip-10-0-1-142.eu-north-1.compute.internal   Ready    <none>   31m   v1.20.7-eks-135321
+ip-10-0-2-246.eu-north-1.compute.internal   Ready    <none>   31m   v1.20.7-eks-135321
+```
+
+Final step is to `Deploying HelloWorld Microservices`
+
+Note: Pre-requiste for final step is to make user underlying infrastructure installation is fully completed. Here we are discussing about below two possibility. Re-visited this again, once installation and pipelines are well defined.
+
+- Trigger Jenkins Job : hello-world-k8s-deployment ( section : `Automation Test via CI/CD Pipelines`)
+
+- Trigger manually via kubectl
+    ```bash
+    [ec2-user@ip-172-31-3-80 helloworld]$ kubectl create -f k8s-hello-world.yaml
+    namespace/helloworld created
+    deployment.apps/hello-world-deploy created
+    service/hello-world-service created
+    horizontalpodautoscaler.autoscaling/hello-world-deploy created
+    poddisruptionbudget.policy/hello-world-pdb created
+    ```
+
+    ```bash
+    [ec2-user@ip-172-31-3-80 helloworld]$ kubectl get all -n helloworld
+    NAME                                      READY   STATUS    RESTARTS   AGE
+    pod/hello-world-deploy-5dfbb59dc7-8zl9b   0/1     Running   0          14s
+    pod/hello-world-deploy-5dfbb59dc7-f9tc7   0/1     Running   0          14s
+
+    NAME                          TYPE           CLUSTER-IP      EXTERNAL-IP                                                                PORT(S)          AGE
+    service/hello-world-service   LoadBalancer   172.20.32.220   ae84a9c5122fd4f83a323dc404c691cb-1011098200.eu-north-1.elb.amazonaws.com   8080:30698/TCP   14s
+
+    NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+    deployment.apps/hello-world-deploy   0/2     2            0           14s
+
+    NAME                                            DESIRED   CURRENT   READY   AGE
+    replicaset.apps/hello-world-deploy-5dfbb59dc7   2         2         0       14s
+
+    NAME                                                     REFERENCE                       TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+    horizontalpodautoscaler.autoscaling/hello-world-deploy   Deployment/hello-world-deploy   <unknown>/50%   2         5         0          14s
+    [ec2-user@ip-172-31-3-80 helloworld]$
+
+    ```
+    Verify HelloWorld microservices is up and running
+
+    ```bash
+    [ec2-user@ip-172-31-3-80 helloworld]$ curl http://ae84a9c5122fd4f83a323dc404c691cb-1011098200.eu-north-1.elb.amazonaws.com:8080
+    Hello World!! Greetings from Spring Boot!
+
+    [ec2-user@ip-172-31-3-80 helloworld]$ curl http://ae84a9c5122fd4f83a323dc404c691cb-1011098200.eu-north-1.elb.amazonaws.com:8080/actuator/health
+    {"status":"UP","groups":["liveness","readiness"]}
+
+    ```
+
 
 ### Installation of Jenkins in EC2 Instances
 
@@ -276,40 +651,16 @@ sudo yum install git -y
 
 ## Deployment of Hello-World Microservices App in AWS EKS Cluster using Jenkins Pipeline
 
-![](/images/springboot-app-deployment.png)
+!(images/springboot-app-deployment.png)
 
 Aim is to faciliate automated way of Continious Deployment and Integration of Hello-World  java application packaging, creating Docker image and deploying containered microservies into AWS EKS - Kubernetes Cluster using Jenkins pipelines.
 
 Hello-World is an Springboot Microservices based Java application. I have already created a repo with source code, including Dockerfile, Jenkinsfile and other supported project files. 
 
 
-## Source Code
 
-Git Clone
-```bash
-git clone https://github.com/dhrumilpatel/gs-spring-boot.git
-```
-Folder Structure
 
-```text
-helloworld                      # root directory
-| - test                        # application build test
-| - src                         # application build src
-| - pom.xml                     # appliccation pom file
-| - target                      # application target file generates hello-world-spring-boot-0.0.1-SNAPSHOT.jar file
-| - README.md # Read Me file
-| - k8s-hello-world.yaml        # k8s deployment file
-| - Dockerfile                  # Docker build image contents
-| - hello-world-imaging.txt     # Pipeline script
-| - hello-world-k8s-deployment  # Pipeline script
-| - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
-| - images                      # contains all images
-| - find_errors.sh              # Log Monitor and Error filter script
-| - useractivity_logfile.log    # sample log file
-| - useractivity_logfile.log_status_2021-09-30.log      # filter's and mark's --- on ERROR and -3 lines
-```
-
-## Testing Locally
+## Manual Test Locally
 
 ### Packaging
 ```bash
@@ -388,11 +739,13 @@ NAME                                                     REFERENCE              
 horizontalpodautoscaler.autoscaling/hello-world-deploy   Deployment/hello-world-deploy   <unknown>/50%   2         5         2          85s
 ```
 
-### CI/CD Pipelines
+## Automation Test via CI/CD Pipelines
 
-Jenkins Jobs
-- hello-world-packaging: This Job will git pull last commit and perform packaging using maven of hello-world microservices.
-- hello-world-imaging: This job will git pull last commit package and perform docker image creation.
+Automation of CI/CD Pipelines is achieved using Jenkins. A well define sequential / independent jobs is been facilitated. 
+
+Jobs:
+- **hello-world-packaging**: This Job will git pull last commit and perform packaging using maven of hello-world microservices.
+- **hello-world-imaging**: This job will git pull last commit package and perform docker image creation.
   - Pipeline Script
     ```java
     node ("worker") {
@@ -416,9 +769,9 @@ Jenkins Jobs
         }
     ```
 
-    ![](/images/Job-docker-image.png)
+    !(/images/Job-docker-image.png)
 
-- hello-world-k8s-deployment: This job will git pull commit docker image and deploy to AWS EKS Cluster
+- **hello-world-k8s-deployment**: This job will git pull commit docker image and deploy to AWS EKS Cluster
   - Pipeline Script
   ```java
      node ("worker") {
@@ -441,7 +794,7 @@ Jenkins Jobs
         }
     }
   ````
-  ![](/images/Job-k8s-deploy.png)
+        !(/images/Job-k8s-deploy.png)
 
 ## Log Monitor Script
 
