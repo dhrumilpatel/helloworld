@@ -65,7 +65,6 @@ spec:
       protocol: TCP
       port: 8080
       targetPort: 8080
-      nodePort: 30600
   type: LoadBalancer
   selector:
     app: hello-world
