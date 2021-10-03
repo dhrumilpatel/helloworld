@@ -791,7 +791,7 @@ Create Jobs:
         }
     ```
 
-    !(/images/Job-docker-image.png)
+    ![](/images/Job-docker-image.png)
 
 - **hello-world-k8s-deployment**: This job will git pull commit docker image and deploy to AWS EKS Cluster
   - Pipeline Script
@@ -816,7 +816,7 @@ Create Jobs:
         }
     }
   ````
-        !(/images/Job-k8s-deploy.png)
+        ![](/images/Job-k8s-deploy.png)
 
 
 ## Hello-World MicroService Final Goal
