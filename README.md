@@ -8,6 +8,8 @@ This project is `production-ready`. Which means, following below steps in order 
 
 ## A description about Manual and Semi-Auto
 
+   ![](/images/HelloWorld_Architecture.png)
+
 # Pre-requistes
 
 1. AWS Account
@@ -821,5 +823,5 @@ Create Jobs:
 
 ## Hello-World MicroService Final Goal
 
-![](/images/hello-world-architecture.png)
+![](/images/Hello-World-Service-EKS-Cluster.png)
 
