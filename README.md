@@ -6,20 +6,26 @@ This project is `production-ready`. Which means, following below steps in order 
 
 # Architecture
 
+## A description about Manual and Semi-Auto
 
 # Pre-requistes
 
 1. AWS Account
-2. EC2
-   | Instance Type | Master &  Slave |
-   | ------------- | --------------  |
-   |               |       AWS CLI   |
-   |               |       EKSCTL    |
-   |      EC2      |       KUBECTL   |
-   |               |       GIT       |
-   |               |       DOCKER    |
-   |               |       MAVEN     |
-   |               |       JENKINS   |
+2. EC2 - Provision 2 ECS Instances. 
+   
+   Named as, 
+   1. Master 
+   2. Slave (to be use, exclusively for running jenkins job pipelines in slave/worker node)
+
+   | Install         |
+   | --------------  |
+   |       AWS CLI   |
+   |       EKSCTL    |
+   |       KUBECTL   |
+   |       GIT       |
+   |       DOCKER    |
+   |       MAVEN     |
+   |      JENKINS    |
 
 3. EKS
    Provisioned and AWS EKS Cluster
@@ -32,7 +38,7 @@ This project is `production-ready`. Which means, following below steps in order 
 
 ### AWS EC2 Instance
 
-From your AMS Console navigate to Services - EC2. Launch Instance with AMI : Amazon Linux 2, instance type t2.micro, further along name the instance ( Master & Slave respectively ) update the Security Groups types as necessary, create and securly store the key pair and finally launch the instance. EC2 Instance shall be up and running in few mins. From tty try accessing the instance with store secure keys.
+From your AWS Console navigate to Services - EC2. Launch Instance with AMI : Amazon Linux 2, instance type t2.micro, further along name the instance ( Master & Slave respectively ) update the Security Groups types as necessary, create and securly store the key pair and finally launch the instance. EC2 Instance shall be up and running in few mins. From tty try accessing the instance with store secure keys.
 
 
 ### Install AWS CLI, EKSCTL
@@ -48,13 +54,13 @@ Installation reference : [Weaveworks EKSCTL](https://github.com/weaveworks/eksct
 ### Configure IAM with Group, Policy and Users
 
 Configuring IAM
-From your AMS Console navigate to Services - IAM
+From your AWS Console navigate to Services - IAM
 1. Create Groups (Name: goal-dr-group)
 2. Attach Policy
      1. AmazonEC2FullAccess
      2. IAMFullAccess
      3. AWSCloudFormationFullAccess
-     4. EKS Specific Custom Policy
+     4. EKS Specific Custom Policy ( Replace your ID for XXXXX )
         ``` json
             {
             "Version": "2012-10-17",
@@ -70,7 +76,7 @@ From your AMS Console navigate to Services - IAM
                         "ssm:GetParameters"
                     ],
                     "Resource": [
-                        "arn:aws:ssm:*:852883190279:parameter/aws/*",
+                        "arn:aws:ssm:*:XXXXX:parameter/aws/*",
                         "arn:aws:ssm:*::parameter/aws/*"
                     ],
                     "Effect": "Allow"
@@ -90,14 +96,15 @@ From your AMS Console navigate to Services - IAM
     4. AWS Configure User Profile
        1. Reference : https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
    
-### Install Kubectl
+### Install Kubectl on EC2 Instances
 Install Kubectl - Kubernetes uses a command line utility called `kubectl` for communicating with the cluster `API server`
 
 Installation reference : [kubectl](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html)
 
 ## Source Code
 
-Git Clone
+Git Clone `HelloWorld` source code on EC2 - Master Instance
+
 ```bash
 git clone https://github.com/dhrumilpatel/helloworld.git
 ```
@@ -126,9 +133,9 @@ helloworld                      # root directory
     | - terraform.tfstate       # state file eks cluster
 ```
 
-### Create Kubernetes EKS Cluster
+## Create Kubernetes EKS Cluster
 
-## EKS Creation Manually via CLI
+### EKS Creation Manually via CLI
 
 EKS Cluster can be created via EKS Console. In our case, we will create via cli.
 
@@ -143,6 +150,7 @@ EKS Cluster Config:
    ```
 4. Zone: AWS auto managed
    ``` bash
+   # Execute this command to find the availability zones for the region
     [ec2-user@ip-172-31-3-80 ~]$ aws ec2 describe-availability-zones --region eu-north-1
     {
     "AvailabilityZones": [
@@ -253,9 +261,24 @@ Cluster creation will take rought 20-25 mins, once its been created and ready as
 
 ## EKS Creation Automatically via Terraform
 
+Install Terraform and verify the version
+
+```bash
+
+curl -o /tmp/terraform.zip -LO https://releases.hashicorp.com/terraform/1.0.8/terraform_1.0.8_linux_amd64.zip
+
+unzip /tmp/terraform.zip
+
+sudo chmod +x terraform && sudo mv terraform /usr/local/bin/
+
+[ec2-user@ip-172-31-3-80 ~]$ terraform version
+Terraform v1.0.8
+
+```
+
 In order to created EKS high-available cluster consider below `main.tf`
 
-Scope of `main.tf` includes
+Scope for  `main.tf` includes
 - Nodes: 3 Node cluster ( Master:1 (AWS auto managed) Worker: 2)
 - Region: eu-north-1
 - Instance Type: m5.large
@@ -538,11 +561,9 @@ ip-10-0-2-246.eu-north-1.compute.internal   Ready    <none>   31m   v1.20.7-eks-
 
 Final step is to `Deploying HelloWorld Microservices`
 
-Note: Pre-requiste for final step is to make user underlying infrastructure installation is fully completed. Here we are discussing about below two possibility. Re-visited this again, once installation and pipelines are well defined.
 
-- Trigger Jenkins Job : hello-world-k8s-deployment ( section : `Automation Test via CI/CD Pipelines`)
-
-- Trigger manually via kubectl
+- Trigger manually via `kubectl` ( this is optional, only if you wish to test it manually without creating pipelines. )
+  
     ```bash
     [ec2-user@ip-172-31-3-80 helloworld]$ kubectl create -f k8s-hello-world.yaml
     namespace/helloworld created
@@ -625,13 +646,13 @@ sudo yum install git -y
 
 ### Configuring Jenkins
 
-1. Using Agents
-   - Defining Agents/Slaves to run through pipeline execution
+1. Agents
+   - Defining Agents, name & label as `worker` node - to run through pipeline execution
      Reference : https://www.jenkins.io/doc/book/using/using-agents/
-2. Using Credentials
+2. Credentials
    - Defining Credentials for Git, Docker, EKS Cluster config
      Reference : https://www.jenkins.io/doc/book/using/using-credentials/
-3. Using Plug-in
+3. Plug-in
    - From Plugin Manager install Maven, Docker, Kuberbetes
 4. Global Tool Configuration
    - Update Home Paths for,
@@ -653,14 +674,13 @@ sudo yum install git -y
 
 !(images/springboot-app-deployment.png)
 
-Aim is to faciliate automated way of Continious Deployment and Integration of Hello-World  java application packaging, creating Docker image and deploying containered microservies into AWS EKS - Kubernetes Cluster using Jenkins pipelines.
+Aim is to faciliate automated way of Continuous Deployment and Integration of Hello-World  java application packaging, creating Docker image and deploying containerized microservies into AWS EKS - Kubernetes Cluster using Jenkins pipelines.
 
 Hello-World is an Springboot Microservices based Java application. I have already created a repo with source code, including Dockerfile, Jenkinsfile and other supported project files. 
 
-
-
-
 ## Manual Test Locally
+
+Naviagte to sourcecode path inside `src`
 
 ### Packaging
 ```bash
@@ -692,7 +712,7 @@ mvn package
 
 ### Imaging
 ```bash
-[ec2-user@ip-172-31-4-42 helloworld]$ docker build -t helloworld:v1 .
+[ec2-user@ip-172-31-4-42 helloworld]$ docker build -t helloworld:latest .
 Sending build context to Docker daemon  37.08MB
 Step 1/3 : FROM openjdk:8-jre-alpine
  ---> f7a292bbb70c
@@ -713,37 +733,39 @@ helloworld                        v1             c9251da573a6   7 seconds ago   
 
 ### Deployment
 ```bash
-[ec2-user@ip-172-31-4-42 helloworld]$ kubectl create -f k8s-hello-world.yaml
-deployment.apps/hello-world-deploy created
-service/hello-world-service created
-horizontalpodautoscaler.autoscaling/hello-world-deploy created
-poddisruptionbudget.policy/hello-world-pdb created
+[ec2-user@ip-172-31-3-80 helloworld]$ kubectl create -f k8s-hello-world.yaml
+    namespace/helloworld created
+    deployment.apps/hello-world-deploy created
+    service/hello-world-service created
+    horizontalpodautoscaler.autoscaling/hello-world-deploy created
+    poddisruptionbudget.policy/hello-world-pdb created
 
+    [ec2-user@ip-172-31-3-80 helloworld]$ kubectl get all -n helloworld
+    NAME                                      READY   STATUS    RESTARTS   AGE
+    pod/hello-world-deploy-5dfbb59dc7-8zl9b   0/1     Running   0          14s
+    pod/hello-world-deploy-5dfbb59dc7-f9tc7   0/1     Running   0          14s
 
-[ec2-user@ip-172-31-4-42 helloworld]$ kubectl get all
-NAME                                      READY   STATUS    RESTARTS   AGE
-pod/hello-world-deploy-7d666575bc-f2q82   1/1     Running   0          85s
-pod/hello-world-deploy-7d666575bc-nk8t8   1/1     Running   0          85s
+    NAME                          TYPE           CLUSTER-IP      EXTERNAL-IP                                                                PORT(S)          AGE
+    service/hello-world-service   LoadBalancer   172.20.32.220   ae84a9c5122fd4f83a323dc404c691cb-1011098200.eu-north-1.elb.amazonaws.com   8080:30698/TCP   14s
 
-NAME                          TYPE           CLUSTER-IP     EXTERNAL-IP                                                                PORT(S)          AGE
-service/hello-world-service   LoadBalancer   10.100.31.14   a7af352b518a24a1393921e3b4506153-1094458878.eu-north-1.elb.amazonaws.com   8080:30600/TCP   85s
-service/kubernetes            ClusterIP      10.100.0.1     <none>                                                                     443/TCP          2d18h
+    NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+    deployment.apps/hello-world-deploy   0/2     2            0           14s
 
-NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/hello-world-deploy   2/2     2            2           86s
+    NAME                                            DESIRED   CURRENT   READY   AGE
+    replicaset.apps/hello-world-deploy-5dfbb59dc7   2         2         0       14s
 
-NAME                                            DESIRED   CURRENT   READY   AGE
-replicaset.apps/hello-world-deploy-7d666575bc   2         2         2       86s
-
-NAME                                                     REFERENCE                       TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
-horizontalpodautoscaler.autoscaling/hello-world-deploy   Deployment/hello-world-deploy   <unknown>/50%   2         5         2          85s
+    NAME                                                     REFERENCE                       TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+    horizontalpodautoscaler.autoscaling/hello-world-deploy   Deployment/hello-world-deploy   <unknown>/50%   2         5         0          14s
+    
 ```
 
 ## Automation Test via CI/CD Pipelines
 
 Automation of CI/CD Pipelines is achieved using Jenkins. A well define sequential / independent jobs is been facilitated. 
 
-Jobs:
+# Adde Node Agent Info
+
+Create Jobs:
 - **hello-world-packaging**: This Job will git pull last commit and perform packaging using maven of hello-world microservices.
 - **hello-world-imaging**: This job will git pull last commit package and perform docker image creation.
   - Pipeline Script
@@ -769,7 +791,7 @@ Jobs:
         }
     ```
 
-    !(/images/Job-docker-image.png)
+    ![](/images/Job-docker-image.png)
 
 - **hello-world-k8s-deployment**: This job will git pull commit docker image and deploy to AWS EKS Cluster
   - Pipeline Script
@@ -794,48 +816,10 @@ Jobs:
         }
     }
   ````
-        !(/images/Job-k8s-deploy.png)
+  ![](/images/Job-k8s-deploy.png)
 
-## Log Monitor Script
 
-```bash
-sh find_errors.sh --help
-#############################
-USAGE :  sh find_errors.sh
-This script does not accept any arguments, log directory are hardcoded, change it before running the script
-#############################
-############# Description ################
-This script looks into useractivity_logfile.log and monitors ERROR enteries; save them in an output file for further analysis.
-#############################
-Extra Scope  --> 1. For a dynamically growing/lotating logfile, add this script to crontab jobs for every minute, and uncomment the tail command provided in the script.
-                 2. Create a suitable crontab Job
-##########################################
-```
-```bash
-[ec2-user@ip-172-31-4-42 helloworld]$ cat useractivity_logfile.log_status_2021-09-30.log
-32019-4-1 13:33:45 [123] User0 goes to search page
-42019-4-1 13:33:46 [123] User0 types in search text
-45fty-4-1 13:33:54 [123] ERROR: fetal Some exception occured-------
-72019-4-1 13:33:50 [123] User9 clicks search button
-82019-4-1 13:33:53 [256] User10 does something
-92019-4-1 13:33:54 [123] ERROR: Some exception occured-------
-102019-4-1 13:33:56 [256] User1 logs off
-112019-4-1 13:33:57 [190] ERROR: Invalid input-------
-22019-4-1 13:33:45 [123] User2 logs in
-32019-4-1 13:33:45 [123] User3 goes to search page
-45fty-4-1 13:33:54 [123] ERROR: Some exception occured-------
-11234-4-1 13:33:49 [190] User3 runs some job
-23456-4-1 13:33:50 [123] User4 clicks search button
-45fty-4-1 13:33:54 [123] ERROR: Some exception occured-------
-23421-4-1 13:33:57 [190] ERROR: Invalid input-------
-3derfr-4-1 20:33:53 [256] User2 does something
-dededed-4-1 20:33:54 [123] ERROR: Some exception occured-------
-11234-4-1 13:33:49 [90] User3 runs some job
-23456-4-1 13:33:50 [23] User4 clicks search button
-45fty-4-1 13:33:54 [13] ERROR: Some exception occured-------
-23421-4-1 13:33:57 [19] ERROR: Invalid input-------
-3derfr-4-1 13:33:53 [25] User2 does something
-dededed-4-1 13:33:54 [222] ERROR: Some exception occured-------
+## Hello-World MicroService Final Goal
 
-```
+![](/images/hello-world-architecture.png)
 
