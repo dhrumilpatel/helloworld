@@ -816,7 +816,7 @@ Create Jobs:
         }
     }
   ````
-        ![](/images/Job-k8s-deploy.png)
+  ![](/images/Job-k8s-deploy.png)
 
 
 ## Hello-World MicroService Final Goal
