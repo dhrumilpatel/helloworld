@@ -1,23 +1,35 @@
 # Goal
 
-The Goal of this Project is to launch an `Hello-World` Javabased Containeraized MicroServices in AWS EKS.
+The Goal of this Project is to launch an `Hello-World` Javabased Containeraized MicroServices in `AWS EKS`.
 
-This project is `production-ready`. Which means, following below steps in order given, you should be able to successfully launch this micro-services.
+This project is `production-ready`. Which means, following below steps in order given, you should be able to successfully launch this microservices.
 
 # Architecture
 
-## A description about Manual and Semi-Auto
-
    ![](/images/HelloWorld_Architecture.png)
+
+As shown in Architecture diagram, we explore how adopting to Microservice vs. Monolithic as a software architecture could add real business value.
+
+`HelloWorld` is very light-weight microservices which is containerezed and hosted on AWS EKS.
+
+**So how does `HelloWorld` microservices works?**
+
+As an devops engineer, you create AWS Account and provision EC2 instances and build infrastruce by installing require software packages to hosting microserices seamlessly including defining  CI/CD pipelines flows in AWS EKS.
+
+**Note:** To build, deploy and run `HelloWorld` microservice you can perform either Manually or via Automation. You can choose as suitable. Keep in mind that EC2 Instances ( named as Master & Slave ) is still the manual process, whilst EKS Creation and CI/CD Pipelines have both the option available. Following, the steps below, under suitable section clear guidelines are drafted.
+
+Finally, as an end-user you can access `HelloWorld` microservices via URL `http://<ip>:8080` and further more, you can perform health check of the microservices `http://<ip>:8080/actuator/health` - which shall return as Status **UP/DOWN**
+
+
 
 # Pre-requistes
 
 1. AWS Account
-2. EC2 - Provision 2 ECS Instances. 
+2. EC2 - Provision 2 ECS Instances ( `t3.micro` ) 
    
    Named as, 
-   1. Master 
-   2. Slave (to be use, exclusively for running jenkins job pipelines in slave/worker node)
+   1. `Master` 
+   2. `Slave` (to be use, exclusively for running jenkins job pipelines in slave/worker node)
 
    | Install         |
    | --------------  |
@@ -28,9 +40,9 @@ This project is `production-ready`. Which means, following below steps in order 
    |       DOCKER    |
    |       MAVEN     |
    |      JENKINS    |
+   |      JDK        |
 
-3. EKS
-   Provisioned and AWS EKS Cluster
+3. EKS - Provisioned and AWS EKS Cluster
 4. IAM User
 5. SCM - Github or any alternative
 6. Image Repo - Docker or any alternative
@@ -38,25 +50,26 @@ This project is `production-ready`. Which means, following below steps in order 
 
 ## Installation
 
+This section, covers installation process for all defined `pre-requites`
+
 ### AWS EC2 Instance
 
-From your AWS Console navigate to Services - EC2. Launch Instance with AMI : Amazon Linux 2, instance type t2.micro, further along name the instance ( Master & Slave respectively ) update the Security Groups types as necessary, create and securly store the key pair and finally launch the instance. EC2 Instance shall be up and running in few mins. From tty try accessing the instance with store secure keys.
+From your `AWS Console` navigate to Services - `EC2`. Launch Instance with **AMI : Amazon Linux 2**, **instance type t2.micro**, further along name the instances as ( Master & Slave respectively ) update the Security Groups types as necessary, create and securly store the key pair and finally launch the instance. EC2 Instance shall be up and running in few mins. From `tty` try accessing the instance with store secure keys.
 
 
 ### Install AWS CLI, EKSCTL
 
-AWS CLI - Command line tools for working with AWS services
+`AWS CLI` - Command line tools for working with AWS services
 
 Installation reference : [AWS CLI Version-2 ](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html)
 
-EKSCTL - The official CLI for Amazon EKS
+`EKSCTL` - The official CLI for Amazon EKS
 
 Installation reference : [Weaveworks EKSCTL](https://github.com/weaveworks/eksctl)
 
 ### Configure IAM with Group, Policy and Users
 
-Configuring IAM
-From your AWS Console navigate to Services - IAM
+From your AWS Console navigate to Services - `IAM`
 1. Create Groups (Name: goal-dr-group)
 2. Attach Policy
      1. AmazonEC2FullAccess
@@ -99,13 +112,13 @@ From your AWS Console navigate to Services - IAM
        1. Reference : https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
    
 ### Install Kubectl on EC2 Instances
-Install Kubectl - Kubernetes uses a command line utility called `kubectl` for communicating with the cluster `API server`
+Install `Kubectl` - Kubernetes uses a command line utility called `kubectl` for communicating with the cluster `API server`
 
 Installation reference : [kubectl](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html)
 
 ## Source Code
 
-Git Clone `HelloWorld` source code on EC2 - Master Instance
+Git Clone `HelloWorld` source code on EC2 - Master Instance on desired path.
 
 ```bash
 git clone https://github.com/dhrumilpatel/helloworld.git
@@ -124,10 +137,8 @@ helloworld                      # root directory
 | - hello-world-imaging.txt     # Pipeline script
 | - hello-world-k8s-deployment  # Pipeline script
 | - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
-| - images                      # contains all images
+| - images/                     # contains all images
 | - find_errors.sh              # Log Monitor and Error filter script
-| - useractivity_logfile.log    # sample log file
-| - useractivity_logfile.log_status_2021-09-30.log      # filter's and mark's --- on ERROR and -3 lines
 | - aws-terraform-eks-cluster
     | - main.tf                 # eks cluster configs
     | - variables.tf            # linked pre-defined variables
@@ -259,7 +270,7 @@ EKS Cluster Config:
 2021-09-27 19:49:03 [ℹ]  node "ip-192-168-69-72.eu-north-1.compute.internal" is ready
 ```
 
-Cluster creation will take rought 20-25 mins, once its been created and ready as shown above, Verify the EKS Cluster via AWS Console or `kubectl get all`
+Cluster creation will take rought `20-25` mins, once its been created and ready as shown above, Verify the EKS Cluster via AWS Console or `kubectl get all`
 
 ## EKS Creation Automatically via Terraform
 
@@ -508,6 +519,8 @@ variable "map_users" {
 
 ```
 
+**Note:** You can Update the EKS Cluster creation object & field values as desired in `.tf` files. Also, two resource creation in `main.tf` is supplimentary can be skip - Its been added, to validate upon EKS cluster creation, desired resources were also added.
+
 Once satified with the `.tf` files proceed ahead with provisioning.
 
 ```bash
@@ -607,12 +620,32 @@ Final step is to `Deploying HelloWorld Microservices`
     ```
 
 
-### Installation of Jenkins in EC2 Instances
+### Installation of Jenkins & JDK in EC2 Instances
 
 ```bash
 sudo yum update -y
 sudo yum install -y jenkins
 ```
+
+If you encounter any daemonize error, follow this to resolve,
+
+```bash
+Step1. Create the YumRepo File.
+
+sudo vim /etc/yum.repos.d/epelfordaemonize.repo
+
+[daemonize]
+baseurl=https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/
+gpgcheck=no
+enabled=yes
+
+Step2. yum install daemonize -y
+
+Step3. yum install jenkins java-1.8.0-openjdk-devel -y
+
+````
+
+
 ```bash
 sudo useradd -m jenkins
 sudo -u jenkins mkdir /home/jenkins/.ssh
@@ -649,7 +682,7 @@ sudo yum install git -y
 ### Configuring Jenkins
 
 1. Agents
-   - Defining Agents, name & label as `worker` node - to run through pipeline execution
+   - Defining Agents, name & label as `worker` node (likewise, name & label Master node as `master`) - to run through pipeline execution
      Reference : https://www.jenkins.io/doc/book/using/using-agents/
 2. Credentials
    - Defining Credentials for Git, Docker, EKS Cluster config
@@ -674,9 +707,11 @@ sudo yum install git -y
 
 ## Deployment of Hello-World Microservices App in AWS EKS Cluster using Jenkins Pipeline
 
-!(images/springboot-app-deployment.png)
+A quick **sneaky sketch**
 
-Aim is to faciliate automated way of Continuous Deployment and Integration of Hello-World  java application packaging, creating Docker image and deploying containerized microservies into AWS EKS - Kubernetes Cluster using Jenkins pipelines.
+![](images/springboot-app-deployment.png)
+
+Aim is to faciliate automated way of Continuous Deployment and Integration of `HelloWorld`  java application packaging, creating Docker image and deploying containerized microservies into AWS EKS - Kubernetes Cluster using Jenkins pipelines.
 
 Hello-World is an Springboot Microservices based Java application. I have already created a repo with source code, including Dockerfile, Jenkinsfile and other supported project files. 
 
@@ -821,7 +856,6 @@ Create Jobs:
   ![](/images/Job-k8s-deploy.png)
 
 
-## Hello-World MicroService Final Goal
+## Final Goal - A Containerezed HelloWorld MicroService in AWS EKS
 
 ![](/images/Hello-World-Service-EKS-Cluster.png)
-
