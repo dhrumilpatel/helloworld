@@ -138,12 +138,15 @@ helloworld                      # root directory
 | - hello-world-k8s-deployment  # Pipeline script
 | - Jenkinsfile                 # Not Used by any Job, it's an alternative file for image build & push
 | - images/                     # contains all images
-| - find_errors.sh              # Log Monitor and Error filter script
 | - aws-terraform-eks-cluster
     | - main.tf                 # eks cluster configs
     | - variables.tf            # linked pre-defined variables
     | - output.tf               # terraform output's upon eks creation
     | - terraform.tfstate       # state file eks cluster
+| - Log-montior-script/
+    | - find_errors.sh              # Log Monitor and Error filter script
+    | - useractivity_logfile.log    # sample log file
+    | - useractivity_logfile.log_status_2021-09-30.log      # filter's and mark's --- on ERROR and -3 lines
 ```
 
 ## Create Kubernetes EKS Cluster
