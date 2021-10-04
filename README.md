@@ -50,7 +50,7 @@ Finally, as an end-user you can access `HelloWorld` microservices via URL `http:
 
 ## Installation
 
-This section, covers installation process for all defined `pre-requites`
+This section, covers installation process for all defined `pre-requistes`
 
 ### AWS EC2 Instance
 
@@ -803,8 +803,8 @@ Automation of CI/CD Pipelines is achieved using Jenkins. A well define sequentia
 # Adde Node Agent Info
 
 Create Jobs:
-- **hello-world-packaging**: This Job will git pull last commit and perform packaging using maven of hello-world microservices.
-- **hello-world-imaging**: This job will git pull last commit package and perform docker image creation.
+- **hello-world-packaging**: This Job will git pull last commit and perform packaging using maven of hello-world microservices. Create new Job, add GIT details and add step for `mvn install`
+- **hello-world-imaging**: This job will git pull last commit package and perform docker image creation. Create new Pipeline Job, add below details
   - Pipeline Script
     ```java
     node ("worker") {
@@ -830,7 +830,7 @@ Create Jobs:
 
     ![](/images/Job-docker-image.png)
 
-- **hello-world-k8s-deployment**: This job will git pull commit docker image and deploy to AWS EKS Cluster
+- **hello-world-k8s-deployment**: This job will git pull commit docker image and deploy to AWS EKS Cluster. Create new Pipeline Job, add below details
   - Pipeline Script
   ```java
      node ("worker") {
